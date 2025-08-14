@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated 3D Indian Flag over Red Fort</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a202c; /* Darker night sky */
+            font-family: 'Inter', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        /* Custom scrollbar for the speech box */
+        .speech-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .speech-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        .speech-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+        .speech-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="font-sans">
+
+    <!-- This div will be used by three.js to render the 3D scene -->
+    <div id="container"></div>
+
+    <!-- UI Buttons -->
+    <div class="absolute top-4 right-4 z-20">
+        <button id="toggleSpeechBtn" class="bg-white/20 backdrop-blur-sm text-white font-semibold py-2 px-4 rounded-lg shadow-lg border border-white/30 hover:bg-white/30 transition-colors">
+            View Speech
+        </button>
+    </div>
+    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
+         <button id="celebrateBtn" class="bg-gradient-to-r from-orange-500 to-red-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform hover:scale-110 transition-transform">
+            🎉 Celebrate 🎉
+        </button>
+    </div>
+
+    <!-- Speech/Script Container (hidden by default) -->
+    <div id="speechPanel" class="speech-container hidden absolute top-1/2 left-4 md:left-10 transform -translate-y-1/2 bg-black bg-opacity-50 backdrop-blur-sm p-6 rounded-xl shadow-lg text-white max-w-sm md:max-w-md max-h-[80vh] overflow-y-auto z-10 border border-white/20">
+        <h2 class="text-2xl font-bold mb-4 text-orange-400">🎤 Independence Day 2025 Script</h2>
+        
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">Opening</h3>
+        <p class="text-gray-300">"Good morning to everyone present here. Honorable Chief Guest, respected Principal, dear teachers, and my lovely friends — aap sab ko mera namaskar aur 79वें स्वतंत्रता दिवस की हार्दिक शुभकामनाएँ!"</p>
+
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">Introduction</h3>
+        <p class="text-gray-300">"Today, on 15th August 2025, we are celebrating the 79th Independence Day of our beloved Bharat. This is not just a date on the calendar, but a reminder of the sacrifices made by countless freedom fighters — from Mahatma Gandhi to Bhagat Singh, from Rani Lakshmi Bai to Netaji Subhas Chandra Bose — jin logon ne apni jaan is desh ke liye nyochhavar kar di."</p>
+
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">Brief History</h3>
+        <p class="text-gray-300">"In 1947, after almost 200 years of British rule, India finally took a breath of freedom. Our tricolor, the Tiranga, was hoisted high — symbolizing courage (Kesari), peace (Safed), and growth (Hara)."</p>
+
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">2025 Context</h3>
+        <p class="text-gray-300">"Aaj, 79 saal baad, Bharat duniya ke sabse bade loktantra ke roop mein apni ek alag pehchaan bana chuka hai. From Chandrayaan missions touching the Moon, Gaganyaan preparing for human spaceflight, to India becoming a global leader in technology, space research, and green energy — we are writing a new chapter of progress."</p>
+
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">Message to Youth</h3>
+        <p class="text-gray-300">"Par doston, freedom ka matlab sirf azadi nahi, balki zimmedari bhi hai. As the youth of India, it is our duty to uphold unity, honesty, and innovation. Let us fight against corruption, discrimination, and environmental harm — not with weapons, but with knowledge and compassion."</p>
+
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">Closing & Motivation</h3>
+        <p class="text-gray-300">"Aaj ke din hum pratigya lein ki hum apne desh ko sirf dekh kar proud nahi honge, balki usse proud feel karayenge. Let’s make India not only the world’s largest democracy, but also the most inspiring nation on Earth."</p>
+
+        <h3 class="text-lg font-bold mt-4 mb-2 text-gray-200">Final Line with Energy</h3>
+        <p class="text-gray-300">"Jai Hind! Jai Bharat!"</p>
+        <p class="text-center font-bold mt-4 text-xl">🇮🇳 "Bharat Mata ki… Jai!" 🇮🇳</p>
+    </div>
+
+    <!-- Import three.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- Basic Scene Setup ---
+        let scene, camera, renderer, clock;
+        let fireworks = [];
+
+        // --- Flag components ---
+        let flagMesh;
+        const FLAG_WIDTH = 5;
+        const FLAG_HEIGHT = 3;
+        const FLAG_SEGMENTS_W = 30;
+        const FLAG_SEGMENTS_H = 20;
+
+        /**
+         * Creates a stylized 3D model of the Red Fort.
+         */
+        function createRedFort() {
+            const fortGroup = new THREE.Group();
+            const redMaterial = new THREE.MeshPhongMaterial({ color: 0xA52A2A });
+            const whiteMaterial = new THREE.MeshPhongMaterial({ color: 0xf0e6d2 });
+            const mainWallGeo = new THREE.BoxGeometry(12, 1.5, 1.5);
+            const mainWall = new THREE.Mesh(mainWallGeo, redMaterial);
+            mainWall.position.y = 0.75;
+            fortGroup.add(mainWall);
+            const gateGeo = new THREE.BoxGeometry(2, 2.5, 1);
+            const gate = new THREE.Mesh(gateGeo, redMaterial);
+            gate.position.y = 1.25; gate.position.z = 0.5;
+            fortGroup.add(gate);
+            function createTower(x, z) {
+                const towerGroup = new THREE.Group();
+                const baseGeo = new THREE.CylinderGeometry(0.5, 0.5, 2, 8);
+                const base = new THREE.Mesh(baseGeo, redMaterial);
+                base.position.y = 1;
+                const domeGeo = new THREE.SphereGeometry(0.6, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+                const dome = new THREE.Mesh(domeGeo, whiteMaterial);
+                dome.position.y = 2;
+                towerGroup.add(base, dome);
+                towerGroup.position.set(x, 0, z);
+                return towerGroup;
+            }
+            fortGroup.add(createTower(-5.5, 0));
+            fortGroup.add(createTower(5.5, 0));
+            return fortGroup;
+        }
+
+        /**
+         * Creates the texture for the Indian flag on a 2D canvas.
+         */
+        function createFlagTexture() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 512; canvas.height = 256;
+            const stripeHeight = canvas.height / 3;
+            ctx.fillStyle = '#FF9933'; ctx.fillRect(0, 0, canvas.width, stripeHeight);
+            ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, stripeHeight, canvas.width, stripeHeight);
+            ctx.fillStyle = '#138808'; ctx.fillRect(0, stripeHeight * 2, canvas.width, stripeHeight);
+            const centerX = canvas.width / 2, centerY = canvas.height / 2;
+            const radius = stripeHeight / 2.5, spokes = 24;
+            ctx.strokeStyle = '#000080'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI); ctx.stroke();
+            for (let i = 0; i < spokes; i++) {
+                const angle = (i / spokes) * 2 * Math.PI;
+                ctx.beginPath(); ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+                ctx.stroke();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        /**
+         * Creates a single firework burst.
+         */
+        function createFirework() {
+            const particleCount = 200;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const velocities = [];
+            const firework = new THREE.Group();
+
+            const geometry = new THREE.BufferGeometry();
+            const material = new THREE.PointsMaterial({
+                size: 0.15,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                depthWrite: false
+            });
+
+            const points = new THREE.Points(geometry, material);
+            const startPos = new THREE.Vector3(
+                (Math.random() - 0.5) * 10,
+                5 + Math.random() * 3,
+                -2 - Math.random() * 3
+            );
+            
+            const palette = [new THREE.Color(0xFF9933), new THREE.Color(0xFFFFFF), new THREE.Color(0x138808)];
+
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = startPos.x;
+                positions[i3 + 1] = startPos.y;
+                positions[i3 + 2] = startPos.z;
+
+                const color = palette[Math.floor(Math.random() * palette.length)];
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5
+                );
+                velocities.push(velocity);
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            firework.add(points);
+            firework.velocities = velocities;
+            firework.lifespan = 120; // Frames to live
+
+            scene.add(firework);
+            fireworks.push(firework);
+        }
+
+        /**
+         * Initializes the entire 3D scene.
+         */
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a202c);
+            scene.fog = new THREE.Fog(0x1a202c, 15, 35);
+            clock = new THREE.Clock();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 12);
+            camera.lookAt(0, 2, 0);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('container').appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(10, 15, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            const groundGeo = new THREE.PlaneGeometry(50, 50);
+            const groundMat = new THREE.MeshPhongMaterial({ color: 0x3a4f41 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            const redFort = createRedFort();
+            redFort.traverse(node => { if (node.isMesh) node.castShadow = true; });
+            scene.add(redFort);
+            const flagTexture = createFlagTexture();
+            const flagGeometry = new THREE.PlaneGeometry(FLAG_WIDTH, FLAG_HEIGHT, FLAG_SEGMENTS_W, FLAG_SEGMENTS_H);
+            const flagMaterial = new THREE.MeshPhongMaterial({ map: flagTexture, side: THREE.DoubleSide, shininess: 10 });
+            flagMesh = new THREE.Mesh(flagGeometry, flagMaterial);
+            flagMesh.position.set(2.5, 5, 0.5);
+            flagMesh.castShadow = true;
+            scene.add(flagMesh);
+            const poleGeometry = new THREE.CylinderGeometry(0.07, 0.07, 7, 32);
+            const poleMaterial = new THREE.MeshPhongMaterial({ color: 0xd1d5db });
+            const flagpole = new THREE.Mesh(poleGeometry, poleMaterial);
+            flagpole.position.y = 3.5; flagpole.position.z = 0.5;
+            flagpole.castShadow = true;
+            scene.add(flagpole);
+            const finialGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+            const finialMaterial = new THREE.MeshPhongMaterial({ color: 0xfde047 });
+            const finial = new THREE.Mesh(finialGeometry, finialMaterial);
+            finial.position.y = 7.05; finial.position.z = 0.5;
+            finial.castShadow = true;
+            scene.add(finial);
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        /**
+         * Handles window resize events.
+         */
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /**
+         * The main animation loop.
+         */
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = clock.getElapsedTime();
+            if (flagMesh) {
+                const positions = flagMesh.geometry.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    const x = positions.getX(i);
+                    const waveStrength = x * 0.2;
+                    const wave1 = Math.sin(x * 1.5 + time * 3.0) * waveStrength;
+                    const wave2 = Math.sin(x * 2.5 + time * 2.5) * waveStrength * 0.5;
+                    positions.setZ(i, wave1 + wave2);
+                }
+                positions.needsUpdate = true;
+            }
+            
+            // Animate fireworks
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const fw = fireworks[i];
+                fw.lifespan--;
+                if (fw.lifespan <= 0) {
+                    scene.remove(fw);
+                    fireworks.splice(i, 1);
+                    continue;
+                }
+                const points = fw.children[0];
+                const positions = points.geometry.attributes.position;
+                for (let j = 0; j < positions.count; j++) {
+                    const j3 = j * 3;
+                    positions.array[j3] += fw.velocities[j].x;
+                    positions.array[j3 + 1] += fw.velocities[j].y;
+                    positions.array[j3 + 2] += fw.velocities[j].z;
+                    fw.velocities[j].y -= 0.002; // Gravity
+                }
+                positions.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Start the application ---
+        init();
+        animate();
+
+        // --- UI Interaction ---
+        const toggleSpeechBtn = document.getElementById('toggleSpeechBtn');
+        const speechPanel = document.getElementById('speechPanel');
+        const celebrateBtn = document.getElementById('celebrateBtn');
+
+        toggleSpeechBtn.addEventListener('click', () => {
+            speechPanel.classList.toggle('hidden');
+            toggleSpeechBtn.textContent = speechPanel.classList.contains('hidden') ? 'View Speech' : 'Hide Speech';
+        });
+
+        celebrateBtn.addEventListener('click', () => {
+            createFirework();
+        });
+    </script>
+</body>
+</html>
